@@ -1,144 +1,195 @@
-
-
-
-
 #include <stdio.h>
-#include <locale.h>
-
+#include <stdlib.h>
 
 #define true 1
 #define false 0
 #define MAX_ROWS 4
 #define MAX_COLUMNS 4
 #define MAX_POSITIONS 16
+#define NUM_PATTERNS 3
+#define PATTERN_SIZE 4
 
 typedef int boolean;
 
-typedef struct 
-{
+typedef struct {
     int row;
     int column;
 } coordinate;
 
-/* HELPER FUNCTIONS */
+// ===== WINNING PATTERNS (C - T) =====
+const coordinate winPatterns[NUM_PATTERNS][PATTERN_SIZE] = {
+    { {1,1}, {1,2}, {1,3}, {1,4} },   // Top row
+    { {1,4}, {2,3}, {3,2}, {4,1} },   // Anti-diagonal
+    { {4,1}, {4,2}, {4,3}, {4,4} }    // Bottom row
+};
 
-/* Scans a coordinate array for a specific position
- * @param Grid[]    The coordinate grid where the position will be searched in
- * @param pos       Variable containing the row and column (coordinate) of a specific position
- * @return flag     Returns 1 if the position is found within the grid, else it returns 0
- * 
-**/
-int scanGrid(coordinate Grid[], coordinate pos)
-{
-    int i, flag = 0;
-    for (i = 0; i < MAX_POSITIONS; i++)
-    {
+// ======== HELPER FUNCTIONS =========
+
+// Scans a coordinate array for a specific position
+int scanGrid(coordinate Grid[], coordinate pos, int size) {
+    for (int i = 0; i < size; i++) {
         if (pos.row == Grid[i].row && pos.column == Grid[i].column)
-            flag = 1;
+            return 1;
     }
-
-    return flag;
+    return 0;
 }
 
-/* Used at the start of a game to initialize every position in the 4x4 grid as Free Positions
- * @param freePositions[] Coordinate array where all free positions are found
- * 
-**/
-void populateFreePositions(coordinate freePositions[])
-{
-    int i, j, h = 0;
-
-    for (i = 0; i < MAX_ROWS; i++)
-    {
-        for (j = 0; j < MAX_COLUMNS; j++)
-        {
-            if (h < MAX_POSITIONS)
-            {
-                freePositions[h].row = i + 1;
-                freePositions[h].column = j + 1;
-                h++;
+// Removes a position from a coordinate array
+void removeFromArray(coordinate arr[], coordinate pos, int *arrSize) {
+    for (int i = 0; i < *arrSize; i++) {
+        if (arr[i].row == pos.row && arr[i].column == pos.column) {
+            for (int j = i; j < *arrSize - 1; j++) {
+                arr[j] = arr[j + 1];
             }
+            (*arrSize)--;
+            break;
         }
     }
 }
 
-/* Function Implementations */
-
-/* 
- *
- *
- * 
-**/
-
-/* Adds a position to an array of coordinates
- * @param arr[]     Coordinate grid where a new position would be added
- * @param pos       The position to be added to arr[]
- * @param *arrSize  The number of elements in the array to be updated per addition
- * 
-**/
-void addToArray(coordinate arr[], coordinate pos, int *arrSize)
-{
-    arr[*arrSize].row = pos.row;
-    arr[*arrSize].column = pos.column;
-
-    *arrSize += 1;
-}
-
-/* 
- *
- *
- * 
-**/
-// void removeFromArray(coordinate arr[], coordinate pos, int *arrSize)
-// {
-//     arr[*arrSize].row = pos.row;
-//     arr[*arrSize].column = pos.column;
-
-//     *arrSize += 1;
-// }
-
-
-/* Function used to input and remove positions, based on player turns
- * @param pos       A variable containing a specific position
- * @param turn      Boolean used in conditionals to determine whose turn it is
- * @param go        Second boolean also used to determine whose turn it is
- * @param freePositions Coordinate array containing all free positions
- * @param Uno       Coordinate array where a position is stored depending on player turns
- * @param Tres      Second coordinate array where a second position is stored depending on player turns
-**/
-void NextPlayerMove(coordinate pos, boolean turn, boolean go, coordinate freePositions[], coordinate Uno[], int *arrSize)
-{
-    int i, j;
-    printf("Enter a coordinate\n");
-
-    scanf("%d, %d", &pos.row, &pos.column);
-    
-    if (turn && !go && scanGrid(freePositions,pos))     //scanGrid used to determine if the inputted position is available
-    {
-        addToArray(Uno, pos, arrSize);
+// Adds a position to an array of coordinates
+void addToArray(coordinate arr[], coordinate pos, int *arrSize) {
+    if (*arrSize < MAX_POSITIONS) {
+        arr[*arrSize] = pos;
+        (*arrSize)++;
     }
 }
 
-int main ()
-{
-    coordinate Uno[MAX_POSITIONS];
-    coordinate Tres[MAX_POSITIONS];
-    coordinate Dos;
+// Initialize every position in the 4x4 grid as free
+void populateFreePositions(coordinate freePositions[]) {
+    int index = 0;
+    for (int i = 1; i <= MAX_ROWS; i++) {
+        for (int j = 1; j <= MAX_COLUMNS; j++) {
+            freePositions[index].row = i;
+            freePositions[index].column = j;
+            index++;
+        }
+    }
+}
 
-    coordinate freePositions[MAX_POSITIONS];
-    coordinate winningPositions[MAX_POSITIONS];
+// Displays the current board state
+void displayGrid(coordinate Uno[], int unoSize, coordinate Tres[], int tresSize) {
+    printf("\nGrid:\n");
+    for (int i = 1; i <= MAX_ROWS; i++) {
+        for (int j = 1; j <= MAX_COLUMNS; j++) {
+            coordinate temp = {i, j};
+            if (scanGrid(Uno, temp, unoSize))
+                printf(" U ");
+            else if (scanGrid(Tres, temp, tresSize))
+                printf(" T ");
+            else
+                printf(" . ");
+        }
+        printf("\n");
+    }
+}
+
+// Validate coordinate input from the user
+boolean safeInput(coordinate *pos) {
+    char buffer[100];
+    printf("Enter move (row,column): ");
+    fgets(buffer, sizeof(buffer), stdin);
+
+    int parsed = sscanf(buffer, "%d,%d", &pos->row, &pos->column);
+
+    if (parsed != 2) {
+        printf("Invalid format. Use row,column (e.g., 2,3)\n");
+        return false;
+    }
+
+    if (pos->row < 1 || pos->row > MAX_ROWS || pos->column < 1 || pos->column > MAX_COLUMNS) {
+        printf("Out of bounds! Row/column must be from 1 to 4.\n");
+        return false;
+    }
+
+    return true;
+}
+
+// Check if a player's coordinates match any winning pattern
+boolean checkWin(coordinate player[], int size) {
+    for (int i = 0; i < NUM_PATTERNS; i++) {
+        int matchCount = 0;
+        for (int j = 0; j < PATTERN_SIZE; j++) {
+            if (scanGrid(player, winPatterns[i][j], size)) {
+                matchCount++;
+            }
+        }
+        if (matchCount == PATTERN_SIZE) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Main move function with input + error handling
+void NextPlayerMove(boolean *turn, boolean *go,
+                    coordinate freePositions[], int *freeSize,
+                    coordinate Uno[], int *unoSize,
+                    coordinate Tres[], int *tresSize) {
     coordinate pos;
+    boolean valid = false;
 
-    boolean turn = true;
-    boolean go = false;
+    while (!valid) {
+        if (!safeInput(&pos)) continue;
+
+        if (*turn && *go && scanGrid(freePositions, pos, *freeSize)) {
+            addToArray(Uno, pos, unoSize);
+            removeFromArray(freePositions, pos, freeSize);
+            *turn = !*turn;
+            *go = !*go;
+            valid = true;
+        }
+        else if (!*turn && (scanGrid(Uno, pos, *unoSize) || scanGrid(Tres, pos, *tresSize))) {
+            removeFromArray(Uno, pos, unoSize);
+            removeFromArray(Tres, pos, tresSize);
+            addToArray(freePositions, pos, freeSize);
+            *turn = !*turn;
+            valid = true;
+        }
+        else if (*turn && !*go && scanGrid(freePositions, pos, *freeSize)) {
+            addToArray(Tres, pos, tresSize);
+            removeFromArray(freePositions, pos, freeSize);
+            *go = !*go;
+            valid = true;
+        }
+        else {
+            printf("Invalid move: Either occupied or not allowed this turn.\n");
+        }
+    }
+}
+
+// ============ MAIN FUNCTION ============
+int main() {
+    coordinate Uno[MAX_POSITIONS], Tres[MAX_POSITIONS], freePositions[MAX_POSITIONS];
+    int unoSize = 0, tresSize = 0, freeSize = MAX_POSITIONS;
+
+    boolean turn = true;  // true: Uno; false: Dos
+    boolean go = false;   // Uno toggle between Uno/Tres
     boolean over = false;
-
-    int unoSize = 0;
-    int tresSize = 0;
-    int freePosSize = 16;
 
     populateFreePositions(freePositions);
 
+    printf("=== GAME START ===\n");
 
+    while (!over) {
+        displayGrid(Uno, unoSize, Tres, tresSize);
+        printf("Turn: %s\n", turn ? (go ? "Uno (→Uno)" : "Uno (→Tres)") : "Dos");
+
+        NextPlayerMove(&turn, &go, freePositions, &freeSize, Uno, &unoSize, Tres, &tresSize);
+
+        if (checkWin(Uno, unoSize)) {
+            printf("Uno Wins!\n");
+            over = true;
+        } else if (checkWin(Tres, tresSize)) {
+            printf("Tres Wins!\n");
+            over = true;
+        } else if (freeSize == 0) {
+            printf("Dos Wins! (No more free positions)\n");
+            over = true;
+        }
+    }
+
+    displayGrid(Uno, unoSize, Tres, tresSize);
+    printf("=== GAME OVER ===\n");
     return 0;
 }
