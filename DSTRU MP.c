@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+/* Below are the definitions */
 #define MAX_ROWS 4
 #define MAX_COLUMNS 4
 #define MAX_POSITIONS 16
@@ -11,23 +12,31 @@ typedef struct {
     int column;
 } Coordinate;
 
-/* Winning patterns - exactly as specified in the project */
-const Coordinate WINNING_PATTERNS[3][4] = {
+/* Winning patterns, did not remove T from C now */
+const Coordinate WINNING_PATTERNS[4][4] = {
     {{1,1}, {1,2}, {1,3}, {1,4}},  // Top row
+    {{1,1}, {2,2}, {3,3}, {4,4}},  // Diagonal
     {{1,4}, {2,3}, {3,2}, {4,1}},  // Anti-diagonal
     {{4,1}, {4,2}, {4,3}, {4,4}}   // Bottom row
 };
 
+/* Function implementations */
 /* HELPER FUNCTIONS */
 
 /* Improved scanGrid - now returns true/false properly */
+/* Scans the current grid for the indicated position
+ * @param grid: Struct array of coordinates where positions are stored
+ * @param gridSize: 
+ * @param pos: The position to find in the grid
+**/
 bool isPositionInGrid(Coordinate grid[], int gridSize, Coordinate pos) {
+    bool result = false;
     for (int i = 0; i < gridSize; i++) {
         if (pos.row == grid[i].row && pos.column == grid[i].column) {
-            return true;
+            result = true;       // Early return might be fine, makes the code look cleaner
         }
     }
-    return false;
+    return result;
 }
 
 /* Remove position from free positions */
@@ -119,16 +128,17 @@ void NextPlayerMove(Coordinate *pos, bool *turn, bool *go,
         return;
     }
 
-    if (*turn && !*go) {  // Uno's turn
+    if (*turn && *go) {  // Uno's turn
         Uno[*unoSize] = *pos;
         (*unoSize)++;
         *turn = false;
-        *go = true;
-    } else if (!*turn && *go) {  // Tres's turn
+        *go = false;
+    } else if (*turn && !*go) {  // Tres's turn
         Tres[*tresSize] = *pos;
         (*tresSize)++;
-        *turn = true;
-        *go = false;
+        *go = true;
+    } else if (turn == false) {
+        
     }
 
     removeFromFreePositions(freePositions, freePosSize, *pos);
@@ -159,6 +169,7 @@ int main() {
 
     while (playAgain) {
         Coordinate Uno[MAX_POSITIONS] = {0};
+        Coordinate Dos[MAX_POSITIONS] = {0};
         Coordinate Tres[MAX_POSITIONS] = {0};
         Coordinate freePositions[MAX_POSITIONS];
         Coordinate currentPos;
